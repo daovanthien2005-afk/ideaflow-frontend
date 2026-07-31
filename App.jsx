@@ -1,25 +1,64 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 
 function App() {
   const [ideas, setIdeas] = useState([])
   const [text, setText] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  const addIdea = (e) => {
-    e.preventDefault()
-    if (text.trim() === '') return
-    setIdeas([{ id: Date.now(), content: text }, ...ideas])
-    setText('')
+  // Lấy danh sách ý tưởng từ Supabase khi mở trang
+  useEffect(() => {
+    fetchIdeas()
+  }, [])
+
+  const fetchIdeas = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('ideas')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Lỗi khi lấy dữ liệu:', error)
+    } else {
+      setIdeas(data)
+    }
+    setLoading(false)
   }
 
-  const deleteIdea = (id) => {
-    setIdeas(ideas.filter((idea) => idea.id !== id))
+  const addIdea = async (e) => {
+    e.preventDefault()
+    if (text.trim() === '') return
+
+    const { error } = await supabase
+      .from('ideas')
+      .insert([{ content: text }])
+
+    if (error) {
+      console.error('Lỗi khi thêm:', error)
+    } else {
+      setText('')
+      fetchIdeas()
+    }
+  }
+
+  const deleteIdea = async (id) => {
+    const { error } = await supabase
+      .from('ideas')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Lỗi khi xóa:', error)
+    } else {
+      fetchIdeas()
+    }
   }
 
   return (
     <div style={{ maxWidth: 500, margin: '40px auto', fontFamily: 'Arial, sans-serif' }}>
       <h1>💡 IdeaFlow</h1>
-      <p>Ứng dụng demo giao diện Web tĩnh, host trên <b>Azure Static Web Apps</b>.</p>
-
+      <p>Ứng dụng demo giao diện Web, kết nối <b>Supabase</b>, host trên <b>Vercel</b>.</p>
       <form onSubmit={addIdea} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <input
           type="text"
@@ -32,8 +71,9 @@ function App() {
           Thêm
         </button>
       </form>
-
-      {ideas.length === 0 ? (
+      {loading ? (
+        <i>Đang tải...</i>
+      ) : ideas.length === 0 ? (
         <i>Chưa có ý tưởng nào.</i>
       ) : (
         <ul>
