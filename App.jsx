@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
+import emailjs from '@emailjs/browser'
 
 const COLORS = { blue: '#3b82f6', green: '#22c55e', red: '#ef4444', yellow: '#eab308' }
+
+const EMAILJS_SERVICE_ID = 'service_kjabqo8'
+const EMAILJS_TEMPLATE_ID = 'template_ilz2djr'
+const EMAILJS_PUBLIC_KEY = 'fcAjnHE28MWBF5Tc5'
 
 function App() {
   const [ideas, setIdeas] = useState([])
@@ -10,6 +15,10 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState([])
 
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteStatus, setInviteStatus] = useState('')
+
   useEffect(() => {
     fetchIdeas()
   }, [])
@@ -17,7 +26,7 @@ function App() {
   useEffect(() => {
     const interval = setInterval(() => {
       checkReminders()
-    }, 5000) // kiểm tra mỗi 5 giây cho dễ demo
+    }, 5000)
     return () => clearInterval(interval)
   }, [ideas])
 
@@ -71,10 +80,28 @@ function App() {
     else fetchIdeas()
   }
 
+  const sendInvite = async (e) => {
+    e.preventDefault()
+    if (!inviteEmail.trim()) return
+    setInviteStatus('Đang gửi...')
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        { to_email: inviteEmail },
+        { publicKey: EMAILJS_PUBLIC_KEY }
+      )
+      setInviteStatus('✅ Đã gửi lời mời tới ' + inviteEmail)
+      setInviteEmail('')
+    } catch (err) {
+      console.error(err)
+      setInviteStatus('❌ Gửi thất bại, thử lại sau.')
+    }
+  }
+
   return (
     <div style={{ maxWidth: 700, margin: '40px auto', fontFamily: 'Arial, sans-serif', position: 'relative' }}>
 
-      {/* Banner thông báo nổi ở góc màn hình */}
       <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 999 }}>
         {alerts.map((a) => (
           <div key={a.id} style={{
@@ -89,7 +116,28 @@ function App() {
         ))}
       </div>
 
-      <h1>💡 IdeaFlow</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>💡 IdeaFlow</h1>
+        <button onClick={() => setShowInvite(!showInvite)} style={{ padding: '8px 16px', height: 40 }}>
+          👥 Mời bạn bè vào Workspace
+        </button>
+      </div>
+
+      {showInvite && (
+        <form onSubmit={sendInvite} style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#f0f4ff', padding: 12, borderRadius: 8 }}>
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="Nhập email bạn bè..."
+            required
+            style={{ flex: 1, padding: 8 }}
+          />
+          <button type="submit" style={{ padding: '8px 16px' }}>Gửi lời mời</button>
+        </form>
+      )}
+      {inviteStatus && <p>{inviteStatus}</p>}
+
       <p>Ứng dụng demo giao diện Web, kết nối <b>Supabase</b>, host trên <b>Vercel</b>.</p>
 
       <form onSubmit={addIdea} style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
