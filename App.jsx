@@ -8,41 +8,34 @@ function App() {
   const [text, setText] = useState('')
   const [reminder, setReminder] = useState('')
   const [loading, setLoading] = useState(true)
-  const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  )
+  const [alerts, setAlerts] = useState([])
 
   useEffect(() => {
     fetchIdeas()
   }, [])
 
   useEffect(() => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission().then((perm) => setNotifPermission(perm))
-    }
-  }, [])
-
-  useEffect(() => {
     const interval = setInterval(() => {
       checkReminders()
-    }, 30000)
+    }, 5000) // kiểm tra mỗi 5 giây cho dễ demo
     return () => clearInterval(interval)
   }, [ideas])
 
   const checkReminders = () => {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
     const now = new Date()
     ideas.forEach((idea) => {
       if (idea.reminder_time && !idea.notified) {
         const remindAt = new Date(idea.reminder_time)
         if (remindAt <= now) {
-          new Notification('⏰ Nhắc nhở IdeaFlow', {
-            body: idea.content,
-          })
           idea.notified = true
+          setAlerts((prev) => [...prev, { id: idea.id, content: idea.content }])
         }
       }
     })
+  }
+
+  const closeAlert = (id) => {
+    setAlerts((prev) => prev.filter((a) => a.id !== id))
   }
 
   const fetchIdeas = async () => {
@@ -79,15 +72,25 @@ function App() {
   }
 
   return (
-    <div style={{ maxWidth: 700, margin: '40px auto', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ maxWidth: 700, margin: '40px auto', fontFamily: 'Arial, sans-serif', position: 'relative' }}>
+
+      {/* Banner thông báo nổi ở góc màn hình */}
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 999 }}>
+        {alerts.map((a) => (
+          <div key={a.id} style={{
+            background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 8,
+            padding: '12px 16px', marginBottom: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            minWidth: 250,
+          }}>
+            <b>⏰ Nhắc nhở IdeaFlow</b>
+            <p style={{ margin: '4px 0' }}>{a.content}</p>
+            <button onClick={() => closeAlert(a.id)} style={{ fontSize: 12 }}>Đóng</button>
+          </div>
+        ))}
+      </div>
+
       <h1>💡 IdeaFlow</h1>
       <p>Ứng dụng demo giao diện Web, kết nối <b>Supabase</b>, host trên <b>Vercel</b>.</p>
-
-      {notifPermission !== 'granted' && (
-        <p style={{ color: 'orange' }}>
-          ⚠️ Chưa bật quyền thông báo. Trình duyệt sẽ tự hỏi, hoặc bấm icon 🔒 cạnh URL để bật thủ công.
-        </p>
-      )}
 
       <form onSubmit={addIdea} style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <input
