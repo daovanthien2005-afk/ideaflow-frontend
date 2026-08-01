@@ -18,3 +18,4 @@ Kết quả build nằm trong thư mục `dist/`.
 - App location: `/`
 - Api location: (để trống)
 - Output location: `dist`
+.
